@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from handlers import home, checkout, success
-from observability import init as observability_init
+from observability.init import init as observability_init
 from repository import database
 
 # Setup logging

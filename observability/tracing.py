@@ -15,7 +15,8 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.sdk.trace.sampling import AlwaysOn
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
+
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
@@ -27,47 +28,55 @@ logger = logging.getLogger(__name__)
 def init_tracing(app: FastAPI):
     """
     Setup OpenTelemetry tracing dengan OTLP HTTP exporter.
-    
-    Instrumentasi:
-    - FastAPI: HTTP request/response tracing
-    - SQLAlchemy: SQL query tracing (equivalent dengan otelsql di Go)
-    
-    Traces akan dikirim ke Alloy, kemudian diteruskan ke Tempo.
-    Menggunakan AlwaysOn sampler (equivalent dengan AlwaysSample di Go).
+
+    - HTTP tracing via FastAPI instrumentation
+    - SQL query tracing via SQLAlchemy instrumentation
+    - Always-on sampling (equivalent dengan Go sdktrace.AlwaysSample())
     """
-    # Create resource dengan service name dari environment variable
+
+    # =========================
+    # RESOURCE (SERVICE ID)
+    # =========================
     resource = Resource(attributes={
-        ResourceAttributes.SERVICE_NAME: get_env("OTEL_SERVICE_NAME", "ecommerce-python")
+        ResourceAttributes.SERVICE_NAME: get_env(
+            "OTEL_SERVICE_NAME",
+            "python-ecommerce"
+        )
     })
-    
-    # Create OTLP exporter
-    otlp_endpoint = get_env(
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "http://alloy.monitoring.svc.cluster.local:4318"
-    )
-    exporter = OTLPSpanExporter(
-        endpoint=f"{otlp_endpoint}/v1/traces",
-        timeout=10
-    )
-    
-    # Setup tracer provider dengan AlwaysOn sampler
+
+    # =========================
+    # TRACER PROVIDER
+    # =========================
     provider = TracerProvider(
         resource=resource,
-        sampler=AlwaysOn()  # Equivalent dengan AlwaysSample di Go
+        sampler=ALWAYS_ON  # ✅ BENAR untuk Python
     )
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
+
+    # =========================
+    # OTLP HTTP EXPORTER
+    # =========================
+    # ⚠️ HTTP exporter TIDAK mendukung `insecure=True`
+    exporter = OTLPSpanExporter(
+        endpoint=get_env(
+            "OTEL_EXPORTER_OTLP_ENDPOINT",
+            "http://alloy.monitoring.svc.cluster.local:4318/v1/traces"
+        )
+    )
+
+    provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
-    
-    # Instrument FastAPI automatically (HTTP tracing)
+
+    # =========================
+    # INSTRUMENTATION
+    # =========================
+    # HTTP (FastAPI)
     FastAPIInstrumentor.instrument_app(app)
-    
-    # Instrument SQLAlchemy (SQL query tracing)
-    # Ini akan membuat span untuk setiap SQL query
-    # Equivalent dengan otelsql di Golang
+
+    # SQL (SQLAlchemy)
     SQLAlchemyInstrumentor().instrument()
-    
-    logger.info(f"✅ Tracing initialized (AlwaysOn sampler), sending to: {otlp_endpoint}")
-    logger.info("✅ FastAPI instrumented (HTTP tracing)")
-    logger.info("✅ SQLAlchemy instrumented (SQL query tracing)")
+
+    logger.info("✅ OpenTelemetry tracing initialized")
+    logger.info("✅ Sampler: ALWAYS_ON (100% traces)")
+    logger.info("✅ FastAPI HTTP tracing enabled")
+    logger.info("✅ SQLAlchemy query tracing enabled")
 

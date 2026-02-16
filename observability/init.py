@@ -2,7 +2,8 @@
 observability/init.py
 
 Single entry point untuk inisialisasi observability.
-Fungsi init() dipanggil sekali saat aplikasi startup.
+Dipanggil SATU KALI saat aplikasi startup.
+
 Equivalent dengan observability.Init() di Golang.
 """
 
@@ -12,34 +13,46 @@ from fastapi import FastAPI
 from .tracing import init_tracing
 from .profiling import init_profiling
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("observability")
 
 
 def init(app: FastAPI):
     """
-    Inisialisasi semua komponen observability.
-    
-    Fungsi ini adalah SATU-SATUNYA titik masuk untuk setup observability.
-    Business logic tidak perlu tahu detail implementasi tracing atau profiling.
-    
-    Observability failure TIDAK akan crash aplikasi (fail gracefully).
-    
-    Args:
-        app: FastAPI application instance
+    Inisialisasi seluruh komponen observability.
+
+    - Tracing (OpenTelemetry → Alloy → Tempo)
+    - Profiling (Grafana Pyroscope)
+
+    ⚠️ Failure observability TIDAK BOLEH menghentikan aplikasi.
     """
+
     logger.info("🔍 Initializing observability...")
-    
-    # Initialize tracing (OpenTelemetry → Tempo via Alloy)
+
+    # =========================
+    # TRACING (OpenTelemetry)
+    # =========================
     try:
         init_tracing(app)
-    except Exception as e:
-        logger.error(f"Tracing init failed (non-fatal): {e}")
-    
-    # Initialize profiling (Pyroscope)
+        logger.info("✅ Tracing initialized")
+    except Exception as exc:
+        # Fail gracefully (SAMA seperti Go)
+        logger.exception(
+            "❌ Tracing initialization failed (non-fatal): %s",
+            exc,
+        )
+
+    # =========================
+    # PROFILING (Pyroscope)
+    # =========================
     try:
         init_profiling()
-    except Exception as e:
-        logger.error(f"Profiling init failed (non-fatal): {e}")
-    
-    logger.info("✅ Observability initialized")
+        logger.info("✅ Profiling initialized")
+    except Exception as exc:
+        # Profiling optional, jangan crash app
+        logger.exception(
+            "❌ Profiling initialization failed (non-fatal): %s",
+            exc,
+        )
+
+    logger.info("🚀 Observability setup completed")
 
