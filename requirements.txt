@@ -1,0 +1,26 @@
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Templates
+jinja2==3.1.2
+
+# Forms
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# OpenTelemetry - Tracing
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-exporter-otlp-proto-http==1.21.0
+
+# OpenTelemetry - Instrumentation
+opentelemetry-instrumentation-fastapi==0.42b0
+opentelemetry-instrumentation-sqlalchemy==0.42b0
+
+# Profiling
+pyroscope-io==0.8.7
+
