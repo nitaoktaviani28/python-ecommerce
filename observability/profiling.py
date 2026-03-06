@@ -22,7 +22,7 @@ def init_profiling():
             ),
             server_address=get_env(
                 "PYROSCOPE_ENDPOINT",
-                "http://pyroscope-distributor.monitoring.svc.cluster.local:4040"
+                "http://40.125.125.217:4040"
             ),
 
             # IMPORTANT
